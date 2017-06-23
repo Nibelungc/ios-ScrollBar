@@ -19,16 +19,19 @@ class ScrollBar: NSObject {
         static let rightOffset: CGFloat = 30.0
     }
     
-    // MARK: - Properties
+    // MARK: - Public properties
     
-    weak var scrollView: UIScrollView?
     weak var dataSource: ScrollBarDataSource? {
         didSet { reload() }
     }
     
-    var scrollBarView: UIView?
+    // MARK: - Private properties
     
-    let contentOffsetKeyPath = #keyPath(UIScrollView.contentOffset)
+    weak private var scrollView: UIScrollView?
+    private var scrollBarView: UIView?
+    private var panGestureRecognizer: UIPanGestureRecognizer?
+    private let contentOffsetKeyPath = #keyPath(UIScrollView.contentOffset)
+    private var panInProgress = false
 
     // MARK: - Lifecycle
     
@@ -63,31 +66,70 @@ class ScrollBar: NSObject {
         guard let scrollBarView = scrollBarView,
             let scrollView = scrollView else { return }
         let rightOffset = dataSource?.rightOffset?(for: scrollBarView) ?? Constants.rightOffset
-        let x = scrollView.bounds.maxX - scrollBarView.bounds.width / 2.0 - rightOffset
-        let progress = offset / scrollView.contentSize.height
-        let y = offset + (scrollView.bounds.height * progress)
-        scrollBarView.center = CGPoint(x: x, y: y)
-        print("y: \(y), offset: \(offset), progress: \(progress)")
+        let x = scrollView.bounds.maxX - scrollBarView.bounds.width - rightOffset
+        let insets = scrollView.contentInset.top + scrollView.contentInset.bottom
+        let scrollableHeight = scrollView.bounds.height - scrollBarView.bounds.height - insets
+        let offsetWithInsets = offset + insets
+        let progress = offsetWithInsets / (scrollView.contentSize.height - scrollView.bounds.height + insets)
+        print(progress)
+        let y = offsetWithInsets + (scrollableHeight * progress)
+        scrollBarView.frame.origin = CGPoint(x: x, y: y)
     }
     
     // MARK: - Setup UI
     
     private func setupScrollBarView() {
-        self.scrollBarView?.removeFromSuperview()
+        removeOldScrollBar()
         guard let scrollView = scrollView else { return }
         let scrollBarView = dataSource?.view?(for: self) ?? createDefaultScrollBarView()
         scrollView.addSubview(scrollBarView)
         self.scrollBarView = scrollBarView
+        
+        let gestureRecognizer = UIPanGestureRecognizer(target: self, action: #selector(panGestureAction))
+        scrollBarView.addGestureRecognizer(gestureRecognizer)
     }
     
     private func createDefaultScrollBarView() -> UIView {
         // TODO: Create view according to design
-        let size = CGSize(width: 30, height: 30)
+        let size = CGSize(width: 40, height: 40)
         let view = UIView(frame: CGRect(origin: .zero, size: size))
         view.layer.cornerRadius = size.width / 2.0
         view.layer.masksToBounds = true
         view.backgroundColor = .red
         return view
+    }
+    
+    // MARK: - Actions
+    
+    dynamic private func panGestureAction(gesture: UIPanGestureRecognizer) {
+        guard let scrollView = scrollView else { return }
+        guard let scrollBarView = scrollBarView else { return }
+        switch gesture.state {
+        case .began:
+            panInProgress = true
+        case .changed:
+            let pointInScrollView = gesture.location(in: scrollView.superview!).y - scrollView.contentInset.top
+            print(pointInScrollView)
+            let progress = pointInScrollView / scrollView.bounds.height
+            var y = pointInScrollView + (scrollView.contentSize.height * progress)
+            y = min(scrollView.contentSize.height - scrollView.bounds.height, y)
+            let newOffset = CGPoint(x: scrollView.contentOffset.x, y: max(0, y))
+            scrollView.setContentOffset(newOffset, animated: false)
+        case .ended, .cancelled, .failed:
+            panInProgress = false
+        default:
+            return
+        }
+    }
+    
+    // MARK: - Private
+    
+    private func removeOldScrollBar() {
+        guard let oldScrollBarView = scrollBarView else { return }
+        oldScrollBarView.removeFromSuperview()
+        if let oldGesture = panGestureRecognizer {
+            oldScrollBarView.removeGestureRecognizer(oldGesture)
+        }
     }
     
     // MARK: - Observing
@@ -96,8 +138,8 @@ class ScrollBar: NSObject {
         guard keyPath == contentOffsetKeyPath,
             let change = change,
             let scrollView = scrollView else { return }
+//        guard !panInProgress else { return }
         let offset = change[.newKey] as! CGPoint
-        let offsetYWithInsets = offset.y + (scrollView.contentInset.top + scrollView.contentInset.bottom)
-        updateScrollBarView(withYOffset: offsetYWithInsets)
+        updateScrollBarView(withYOffset: offset.y)
     }
 }
