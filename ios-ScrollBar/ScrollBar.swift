@@ -17,19 +17,45 @@ import UIKit
     @objc optional func textForHintView(_ hintView: UIView, at point: CGPoint, for scrollBar: ScrollBar) -> String
 }
 
+struct HintViewAttributes {
+    var size: CGSize
+    var cornerRadius: CGFloat
+    var backgroundColor: UIColor
+    var textColor: UIColor
+    var font: UIFont
+    
+    init(size: CGSize = CGSize(width: 76, height: 32),
+         cornerRadius: CGFloat = 5,
+         backgroundColor: UIColor = UIColor.black.withAlphaComponent(0.3),
+         textColor: UIColor = .black,
+         font: UIFont = .systemFont(ofSize: 15)) {
+        self.size = size
+        self.cornerRadius = cornerRadius
+        self.backgroundColor = backgroundColor
+        self.textColor = textColor
+        self.font = font
+    }
+}
+
+struct ScrollBarAttributes {
+    
+    var minStartSpeedInPoints: CGFloat
+    var rightOffset: CGFloat
+    var fadeOutAnimationDuration: TimeInterval
+    var fadeOutAnimationDelay: TimeInterval
+    
+    init(minStartSpeedInPoints: CGFloat = 20.0,
+         rightOffset: CGFloat = 30.0,
+         fadeOutAnimationDuration: TimeInterval = 0.3,
+         fadeOutAnimationDelay: TimeInterval = 0.5) {
+        self.minStartSpeedInPoints = minStartSpeedInPoints
+        self.rightOffset = rightOffset
+        self.fadeOutAnimationDuration = fadeOutAnimationDuration
+        self.fadeOutAnimationDelay = fadeOutAnimationDelay
+    }
+}
 
 class ScrollBar: NSObject {
-    
-    private struct Constants {
-        static let minStartSpeedInPoints: CGFloat = 20.0
-        static let rightOffset: CGFloat = 30.0
-        static let fadeOutAnimationDuration = 0.3
-        static let fadeOutAnimationDelay = 0.5
-        static let defaultScrollBarViewSize = CGSize(width: 48, height: 48)
-        static let hintViewSize = CGSize(width: 76, height: 32)
-        static let hintViewCornerRadius: CGFloat = 5
-        static let hintViewBackgroundColor = UIColor.black.withAlphaComponent(0.3)
-    }
     
     // MARK: - Public properties
     
@@ -38,12 +64,18 @@ class ScrollBar: NSObject {
     }
     private(set) var isFastScrollInProgress = false
     var showsHintView = true
+    var hintViewAttributes = HintViewAttributes() {
+        didSet { updateHintViewAttributes() }
+    }
+    var attributes = ScrollBarAttributes()
     
     // MARK: - Private properties
     
     weak private var scrollView: UIScrollView?
     private var scrollBarView: UIView?
-    private var hintView: UILabel?
+    private var hintView: UILabel? {
+        didSet { updateHintViewAttributes() }
+    }
     private var panGestureRecognizer: UIPanGestureRecognizer?
     private let contentOffsetKeyPath = #keyPath(UIScrollView.contentOffset)
     private var fadeOutWorkItem: DispatchWorkItem?
@@ -55,19 +87,11 @@ class ScrollBar: NSObject {
     init(scrollView: UIScrollView) {
         super.init()
         self.scrollView = scrollView
-        self.startObservingScrollView()
+        scrollView.addObserver(self, forKeyPath: contentOffsetKeyPath, options: [.new, .old], context: nil)
         self.reload()
     }
     
     deinit {
-        stopObservingScrollView()
-    }
-    
-    private func startObservingScrollView() {
-        scrollView?.addObserver(self, forKeyPath: contentOffsetKeyPath, options: [.new, .old], context: nil)
-    }
-    
-    private func stopObservingScrollView() {
         scrollView?.removeObserver(self, forKeyPath: contentOffsetKeyPath)
     }
     
@@ -83,10 +107,10 @@ class ScrollBar: NSObject {
         guard let scrollBarView = scrollBarView,
             let scrollView = scrollView else { return }
         guard isScrollBarActive ||
-            (speed >= Constants.minStartSpeedInPoints) else { return }
+            (speed >= attributes.minStartSpeedInPoints) else { return }
         isScrollBarActive = true
         scrollBarView.alpha = 1.0
-        let rightOffset = dataSource?.rightOffset?(for: scrollBarView, for: self) ?? Constants.rightOffset
+        let rightOffset = dataSource?.rightOffset?(for: scrollBarView, for: self) ?? attributes.rightOffset
         let x = scrollView.bounds.maxX - scrollBarView.bounds.width - rightOffset
         let insets = scrollView.contentInset.top + scrollView.contentInset.bottom
         let scrollableHeight = scrollView.bounds.height - scrollBarView.bounds.height - insets
@@ -111,9 +135,9 @@ class ScrollBar: NSObject {
         let y = scrollBarView.center.y
         let point = CGPoint(x: x, y: y)
         _hintView.text = dataSource?.textForHintView?(_hintView, at: point, for: self)
-        var size = _hintView.sizeThatFits(Constants.hintViewSize)
-        size.width = max(Constants.hintViewSize.width, size.width)
-        size.height = max(Constants.hintViewSize.height, size.height)
+        var size = _hintView.sizeThatFits(hintViewAttributes.size)
+        size.width = max(hintViewAttributes.size.width, size.width)
+        size.height = max(hintViewAttributes.size.height, size.height)
         _hintView.frame.size = size
         _hintView.center = point
     }
@@ -144,7 +168,7 @@ class ScrollBar: NSObject {
     }
     
     private func createDefaultScrollBarView() -> UIView {
-        let size = Constants.defaultScrollBarViewSize
+        let size = CGSize(width: 48, height: 48)
         let view = UIView(frame: CGRect(origin: .zero, size: size))
         view.layer.cornerRadius = size.width / 2.0
         view.layer.masksToBounds = true
@@ -153,9 +177,7 @@ class ScrollBar: NSObject {
     }
     
     private func createDefaultScrollBarHintView() -> UILabel {
-        let label = UILabel(frame: CGRect(origin: .zero, size: Constants.hintViewSize))
-        label.backgroundColor = Constants.hintViewBackgroundColor
-        label.layer.cornerRadius = Constants.hintViewCornerRadius
+        let label = UILabel(frame: .zero)
         label.layer.masksToBounds = true
         label.textAlignment = .center
         return label
@@ -195,12 +217,13 @@ class ScrollBar: NSObject {
         fadeOutWorkItem?.cancel()
         fadeOutWorkItem = DispatchWorkItem() {
             [weak self] in
-            UIView.animate(withDuration: Constants.fadeOutAnimationDuration) {
+            guard let sSelf = self else { return }
+            UIView.animate(withDuration: sSelf.attributes.fadeOutAnimationDuration) {
                 views.forEach { $0?.alpha = 0.0 }
-                self?.isScrollBarActive = false
+                sSelf.isScrollBarActive = false
             }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + Constants.fadeOutAnimationDelay,
+        DispatchQueue.main.asyncAfter(deadline: .now() + attributes.fadeOutAnimationDelay,
                                       execute: fadeOutWorkItem!)
     }
     
@@ -210,6 +233,15 @@ class ScrollBar: NSObject {
         if let oldGesture = panGestureRecognizer {
             oldScrollBarView.removeGestureRecognizer(oldGesture)
         }
+    }
+    
+    private func updateHintViewAttributes() {
+        guard let hintView = hintView else { return }
+        hintView.backgroundColor = hintViewAttributes.backgroundColor
+        hintView.layer.cornerRadius = hintViewAttributes.cornerRadius
+        hintView.frame.size = hintViewAttributes.size
+        hintView.textColor = hintViewAttributes.textColor
+        hintView.font = hintViewAttributes.font
     }
     
     // MARK: - Observing
