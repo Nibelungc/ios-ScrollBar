@@ -96,12 +96,11 @@ class ScrollBar: NSObject {
     }
     
     private func createDefaultScrollBarView() -> UIView {
-        // TODO: Create view according to design
-        let size = CGSize(width: 40, height: 40)
+        let size = CGSize(width: 44, height: 44)
         let view = UIView(frame: CGRect(origin: .zero, size: size))
         view.layer.cornerRadius = size.width / 2.0
         view.layer.masksToBounds = true
-        view.backgroundColor = .red
+        view.backgroundColor = UIColor.black.withAlphaComponent(0.3)
         return view
     }
     
