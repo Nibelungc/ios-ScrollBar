@@ -106,6 +106,7 @@ class ScrollBar: NSObject {
     // MARK: - Update UI
     
     private func updateScrollBarView(withYOffset offset: CGFloat, speedInPoints speed: CGFloat) {
+        bringSubviewsToFrontIfNeeded()
         guard let scrollBarView = scrollBarView else { return }
         guard isScrollBarActive ||
             (speed >= attributes.minStartSpeedInPoints) else { return }
@@ -239,6 +240,11 @@ class ScrollBar: NSObject {
         hintView.frame.size = hintViewAttributes.size
         hintView.textColor = hintViewAttributes.textColor
         hintView.font = hintViewAttributes.font
+    }
+    
+    private func bringSubviewsToFrontIfNeeded() {
+        let views = [hintView, scrollBarView].flatMap { $0 }
+        views.forEach { scrollView.bringSubview(toFront: $0) }
     }
     
     // MARK: - Observing
