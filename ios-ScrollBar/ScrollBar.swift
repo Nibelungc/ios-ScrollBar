@@ -213,7 +213,7 @@ class ScrollBar: NSObject {
     private func scheduleFadeOutAnimation() {
         let views = [scrollBarView, hintView]
         fadeOutWorkItem?.cancel()
-        fadeOutWorkItem = DispatchWorkItem() {
+        fadeOutWorkItem = DispatchWorkItem {
             [weak self] in
             guard let sSelf = self else { return }
             UIView.animate(withDuration: sSelf.attributes.fadeOutAnimationDuration) {

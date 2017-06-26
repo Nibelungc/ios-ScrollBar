@@ -19,9 +19,9 @@ class ViewController: UIViewController, UITableViewDataSource, ScrollBarDataSour
         super.viewDidLoad()
         
         items = [
-            (0...10).map { "Cell \($0)" },
-            (0...10).map { "Cell \($0)" },
-            (0...10).map { "Cell \($0)" }
+            (0...1000).map { "Cell \($0)" },
+            (0...1000).map { "Cell \($0)" },
+            (0...1000).map { "Cell \($0)" }
         ]
         
         tableView = UITableView(frame: view.bounds, style: .plain)
