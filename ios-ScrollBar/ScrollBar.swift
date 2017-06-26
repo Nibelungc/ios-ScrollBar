@@ -24,7 +24,10 @@ class ScrollBar: NSObject {
         static let rightOffset: CGFloat = 30.0
         static let fadeOutAnimationDuration = 0.3
         static let fadeOutAnimationDelay = 0.5
-        static let hintViewSize = CGSize(width: 70, height: 32)
+        static let defaultScrollBarViewSize = CGSize(width: 48, height: 48)
+        static let hintViewSize = CGSize(width: 76, height: 32)
+        static let hintViewCornerRadius: CGFloat = 5
+        static let hintViewBackgroundColor = UIColor.black.withAlphaComponent(0.3)
     }
     
     // MARK: - Public properties
@@ -92,7 +95,7 @@ class ScrollBar: NSObject {
     
     private func updateHintView(forScrollBarView scrollBarView: UIView) {
         guard let scrollView = scrollView else { return }
-        hintView?.alpha = showsHintView ? 1.0 : 0.0
+        hintView?.alpha = (showsHintView && isFastScrollInProgress) ? 1.0 : 0.0
         guard showsHintView else { return }
         if hintView == nil {
             setupHintView()
@@ -105,6 +108,7 @@ class ScrollBar: NSObject {
         _hintView.text = dataSource?.textForHintView?(_hintView, at: point, for: self)
         var size = _hintView.sizeThatFits(Constants.hintViewSize)
         size.width = max(Constants.hintViewSize.width, size.width)
+        size.height = max(Constants.hintViewSize.height, size.height)
         _hintView.frame.size = size
         _hintView.center = point
     }
@@ -133,7 +137,7 @@ class ScrollBar: NSObject {
     }
     
     private func createDefaultScrollBarView() -> UIView {
-        let size = CGSize(width: 48, height: 48)
+        let size = Constants.defaultScrollBarViewSize
         let view = UIView(frame: CGRect(origin: .zero, size: size))
         view.layer.cornerRadius = size.width / 2.0
         view.layer.masksToBounds = true
@@ -143,8 +147,8 @@ class ScrollBar: NSObject {
     
     private func createDefaultScrollBarHintView() -> UILabel {
         let label = UILabel(frame: CGRect(origin: .zero, size: Constants.hintViewSize))
-        label.backgroundColor = UIColor.black.withAlphaComponent(0.3)
-        label.layer.cornerRadius = 5
+        label.backgroundColor = Constants.hintViewBackgroundColor
+        label.layer.cornerRadius = Constants.hintViewCornerRadius
         label.layer.masksToBounds = true
         label.textAlignment = .center
         return label
@@ -167,8 +171,7 @@ class ScrollBar: NSObject {
             let maxYOffset = scrollView.contentSize.height - scrollView.bounds.height
             let deltaContentY = deltaY * (maxYOffset / scrollableHeight)
             var y = scrollView.contentOffset.y + deltaContentY
-            y = min(maxYOffset, y)
-            y = max(-insets, y)
+            y = max(-insets, (min(maxYOffset, y)))
             let newOffset = CGPoint(x: scrollView.contentOffset.x, y: y)
             scrollView.setContentOffset(newOffset, animated: false)
         case .ended, .cancelled, .failed:
