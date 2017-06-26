@@ -21,6 +21,7 @@ import UIKit
 class ScrollBar: NSObject {
     
     private struct Constants {
+        static let minStartSpeedInPoints: CGFloat = 20.0
         static let rightOffset: CGFloat = 30.0
         static let fadeOutAnimationDuration = 0.3
         static let fadeOutAnimationDelay = 0.5
@@ -47,6 +48,7 @@ class ScrollBar: NSObject {
     private let contentOffsetKeyPath = #keyPath(UIScrollView.contentOffset)
     private var fadeOutWorkItem: DispatchWorkItem?
     private var lastPanTranslation: CGFloat = 0.0
+    private var isScrollBarActive = false
 
     // MARK: - Lifecycle
     
@@ -62,7 +64,7 @@ class ScrollBar: NSObject {
     }
     
     private func startObservingScrollView() {
-        scrollView?.addObserver(self, forKeyPath: contentOffsetKeyPath, options: [.new], context: nil)
+        scrollView?.addObserver(self, forKeyPath: contentOffsetKeyPath, options: [.new, .old], context: nil)
     }
     
     private func stopObservingScrollView() {
@@ -77,9 +79,12 @@ class ScrollBar: NSObject {
     
     // MARK: - Update UI
     
-    private func updateScrollBarView(withYOffset offset: CGFloat) {
+    private func updateScrollBarView(withYOffset offset: CGFloat, speedInPoints speed: CGFloat) {
         guard let scrollBarView = scrollBarView,
             let scrollView = scrollView else { return }
+        guard isScrollBarActive ||
+            (speed >= Constants.minStartSpeedInPoints) else { return }
+        isScrollBarActive = true
         scrollBarView.alpha = 1.0
         let rightOffset = dataSource?.rightOffset?(for: scrollBarView, for: self) ?? Constants.rightOffset
         let x = scrollView.bounds.maxX - scrollBarView.bounds.width - rightOffset
@@ -120,6 +125,7 @@ class ScrollBar: NSObject {
         guard let scrollView = scrollView else { return }
         let scrollBarView = dataSource?.view?(for: self) ?? createDefaultScrollBarView()
         scrollView.addSubview(scrollBarView)
+        scrollBarView.alpha = 0.0
         self.scrollBarView = scrollBarView
         
         let gestureRecognizer = UIPanGestureRecognizer(target: self, action: #selector(panGestureAction))
@@ -132,6 +138,7 @@ class ScrollBar: NSObject {
             hintView == nil else { return }
         let _hintView = createDefaultScrollBarHintView()
         scrollView.addSubview(_hintView)
+        _hintView.alpha = 0.0
         _hintView.isUserInteractionEnabled = false
         hintView = _hintView
     }
@@ -187,8 +194,10 @@ class ScrollBar: NSObject {
         let views = [scrollBarView, hintView]
         fadeOutWorkItem?.cancel()
         fadeOutWorkItem = DispatchWorkItem() {
+            [weak self] in
             UIView.animate(withDuration: Constants.fadeOutAnimationDuration) {
                 views.forEach { $0?.alpha = 0.0 }
+                self?.isScrollBarActive = false
             }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + Constants.fadeOutAnimationDelay,
@@ -208,7 +217,9 @@ class ScrollBar: NSObject {
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
         guard keyPath == contentOffsetKeyPath,
             let change = change else { return }
-        let offset = change[.newKey] as! CGPoint
-        updateScrollBarView(withYOffset: offset.y)
+        let newOffset = change[.newKey] as! CGPoint
+        let oldOffset = change[.oldKey] as! CGPoint
+        let speedInPoints = abs(oldOffset.y - newOffset.y)
+        updateScrollBarView(withYOffset: newOffset.y, speedInPoints: speedInPoints)
     }
 }
