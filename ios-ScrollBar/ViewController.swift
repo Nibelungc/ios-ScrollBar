@@ -8,7 +8,7 @@
 
 import UIKit
 
-class ViewController: UIViewController, UITableViewDataSource {
+class ViewController: UIViewController, UITableViewDataSource, ScrollBarDataSource {
     
     var tableView: UITableView!
     var scrollBar: ScrollBar!
@@ -27,6 +27,15 @@ class ViewController: UIViewController, UITableViewDataSource {
         tableView.dataSource = self
         
         scrollBar = ScrollBar(scrollView: tableView)
+        scrollBar.dataSource = self
+    }
+    
+    // MARK - ScrollBarDataSource
+    
+    func textForHintView(_ hintView: UIView, at point: CGPoint, for scrollBar: ScrollBar) -> String {
+        guard let indexPath = tableView.indexPathForRow(at: point) else { return "" }
+        let title = items[indexPath.row]
+        return title
     }
 
     // MARK: - UITableViewDataSource
