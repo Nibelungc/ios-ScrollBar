@@ -92,6 +92,7 @@ class ScrollBar: NSObject {
         
         let gestureRecognizer = UIPanGestureRecognizer(target: self, action: #selector(panGestureAction))
         scrollBarView.addGestureRecognizer(gestureRecognizer)
+        scrollView.panGestureRecognizer.require(toFail: gestureRecognizer)
     }
     
     private func createDefaultScrollBarView() -> UIView {
