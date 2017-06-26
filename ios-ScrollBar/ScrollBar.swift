@@ -93,6 +93,8 @@ class ScrollBar: NSObject {
     
     deinit {
         scrollView.removeObserver(self, forKeyPath: contentOffsetKeyPath)
+        scrollBarView?.removeFromSuperview()
+        hintView?.removeFromSuperview()
     }
     
     // MARK: - Public
