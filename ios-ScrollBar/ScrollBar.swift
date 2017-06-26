@@ -17,6 +17,8 @@ class ScrollBar: NSObject {
     
     private struct Constants {
         static let rightOffset: CGFloat = 30.0
+        static let fadeOutAnimationDuration = 0.3
+        static let fadeOutAnimationDelay = 0.5
     }
     
     // MARK: - Public properties
@@ -32,6 +34,8 @@ class ScrollBar: NSObject {
     private var scrollBarView: UIView?
     private var panGestureRecognizer: UIPanGestureRecognizer?
     private let contentOffsetKeyPath = #keyPath(UIScrollView.contentOffset)
+    private var fadeOutWorkItem: DispatchWorkItem?
+    private var lastPanTranslation: CGFloat = 0.0
 
     // MARK: - Lifecycle
     
@@ -65,6 +69,7 @@ class ScrollBar: NSObject {
     private func updateScrollBarView(withYOffset offset: CGFloat) {
         guard let scrollBarView = scrollBarView,
             let scrollView = scrollView else { return }
+        scrollBarView.alpha = 1.0
         let rightOffset = dataSource?.rightOffset?(for: scrollBarView) ?? Constants.rightOffset
         let x = scrollView.bounds.maxX - scrollBarView.bounds.width - rightOffset
         let insets = scrollView.contentInset.top + scrollView.contentInset.bottom
@@ -73,6 +78,7 @@ class ScrollBar: NSObject {
         let progress = offsetWithInsets / (scrollView.contentSize.height - scrollView.bounds.height + insets)
         let y = offsetWithInsets + (scrollableHeight * progress)
         scrollBarView.frame.origin = CGPoint(x: x, y: y)
+        scheduleFadeOut()
     }
     
     // MARK: - Setup UI
@@ -100,20 +106,19 @@ class ScrollBar: NSObject {
     
     // MARK: - Actions
     
-    private var translation: CGFloat = 0.0
     
     dynamic private func panGestureAction(gesture: UIPanGestureRecognizer) {
         guard let scrollView = scrollView else { return }
         guard let scrollBarView = scrollBarView else { return }
         switch gesture.state {
         case .began:
-            translation = 0.0
+            lastPanTranslation = 0.0
             isFastScrollInProgress = true
         case .changed:
             let insets = scrollView.contentInset.top + scrollView.contentInset.bottom
             let scrollableHeight = scrollView.bounds.height - scrollBarView.bounds.height - insets
-            let deltaY = gesture.translation(in: scrollView).y - translation
-            translation = gesture.translation(in: scrollView).y
+            let deltaY = gesture.translation(in: scrollView).y - lastPanTranslation
+            lastPanTranslation = gesture.translation(in: scrollView).y
             let maxYOffset = scrollView.contentSize.height - scrollView.bounds.height
             let deltaContentY = deltaY * (maxYOffset / scrollableHeight)
             var y = scrollView.contentOffset.y + deltaContentY
@@ -129,6 +134,18 @@ class ScrollBar: NSObject {
     }
     
     // MARK: - Private
+    
+    private func scheduleFadeOut() {
+        fadeOutWorkItem?.cancel()
+        fadeOutWorkItem = DispatchWorkItem() {
+            [weak self] in
+            UIView.animate(withDuration: Constants.fadeOutAnimationDuration) {
+                self?.scrollBarView?.alpha = 0.0
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Constants.fadeOutAnimationDelay,
+                                      execute: fadeOutWorkItem!)
+    }
     
     private func removeOldScrollBar() {
         guard let oldScrollBarView = scrollBarView else { return }
