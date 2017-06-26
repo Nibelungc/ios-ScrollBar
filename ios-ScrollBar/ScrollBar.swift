@@ -24,6 +24,7 @@ class ScrollBar: NSObject {
     weak var dataSource: ScrollBarDataSource? {
         didSet { reload() }
     }
+    private(set) var isFastScrollInProgress = false
     
     // MARK: - Private properties
     
@@ -31,7 +32,6 @@ class ScrollBar: NSObject {
     private var scrollBarView: UIView?
     private var panGestureRecognizer: UIPanGestureRecognizer?
     private let contentOffsetKeyPath = #keyPath(UIScrollView.contentOffset)
-    private var panInProgress = false
 
     // MARK: - Lifecycle
     
@@ -71,7 +71,6 @@ class ScrollBar: NSObject {
         let scrollableHeight = scrollView.bounds.height - scrollBarView.bounds.height - insets
         let offsetWithInsets = offset + insets
         let progress = offsetWithInsets / (scrollView.contentSize.height - scrollView.bounds.height + insets)
-        print(progress)
         let y = offsetWithInsets + (scrollableHeight * progress)
         scrollBarView.frame.origin = CGPoint(x: x, y: y)
     }
@@ -101,22 +100,29 @@ class ScrollBar: NSObject {
     
     // MARK: - Actions
     
+    private var translation: CGFloat = 0.0
+    
     dynamic private func panGestureAction(gesture: UIPanGestureRecognizer) {
         guard let scrollView = scrollView else { return }
         guard let scrollBarView = scrollBarView else { return }
         switch gesture.state {
         case .began:
-            panInProgress = true
+            translation = 0.0
+            isFastScrollInProgress = true
         case .changed:
-            let pointInScrollView = gesture.location(in: scrollView.superview!).y - scrollView.contentInset.top
-            print(pointInScrollView)
-            let progress = pointInScrollView / scrollView.bounds.height
-            var y = pointInScrollView + (scrollView.contentSize.height * progress)
-            y = min(scrollView.contentSize.height - scrollView.bounds.height, y)
-            let newOffset = CGPoint(x: scrollView.contentOffset.x, y: max(0, y))
+            let insets = scrollView.contentInset.top + scrollView.contentInset.bottom
+            let scrollableHeight = scrollView.bounds.height - scrollBarView.bounds.height - insets
+            let deltaY = gesture.translation(in: scrollView).y - translation
+            translation = gesture.translation(in: scrollView).y
+            let maxYOffset = scrollView.contentSize.height - scrollView.bounds.height
+            let deltaContentY = deltaY * (maxYOffset / scrollableHeight)
+            var y = scrollView.contentOffset.y + deltaContentY
+            y = min(maxYOffset, y)
+            y = max(-insets, y)
+            let newOffset = CGPoint(x: scrollView.contentOffset.x, y: y)
             scrollView.setContentOffset(newOffset, animated: false)
         case .ended, .cancelled, .failed:
-            panInProgress = false
+            isFastScrollInProgress = false
         default:
             return
         }
@@ -136,9 +142,7 @@ class ScrollBar: NSObject {
     
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
         guard keyPath == contentOffsetKeyPath,
-            let change = change,
-            let scrollView = scrollView else { return }
-//        guard !panInProgress else { return }
+            let change = change else { return }
         let offset = change[.newKey] as! CGPoint
         updateScrollBarView(withYOffset: offset.y)
     }

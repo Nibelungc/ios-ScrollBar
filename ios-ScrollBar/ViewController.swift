@@ -18,7 +18,7 @@ class ViewController: UIViewController, UITableViewDataSource {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        items = (0...100).map { "Cell \($0)" }
+        items = (0...1000).map { "Cell \($0)" }
         
         tableView = UITableView(frame: view.bounds, style: .plain)
         tableView.autoresizingMask = [.flexibleHeight, .flexibleWidth]
