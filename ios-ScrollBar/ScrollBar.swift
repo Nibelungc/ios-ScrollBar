@@ -71,7 +71,7 @@ class ScrollBar: NSObject {
     
     // MARK: - Private properties
     
-    weak private var scrollView: UIScrollView?
+    private var scrollView: UIScrollView
     private var scrollBarView: UIView?
     private var hintView: UILabel? {
         didSet { updateHintViewAttributes() }
@@ -85,14 +85,14 @@ class ScrollBar: NSObject {
     // MARK: - Lifecycle
     
     init(scrollView: UIScrollView) {
-        super.init()
         self.scrollView = scrollView
+        super.init()
         scrollView.addObserver(self, forKeyPath: contentOffsetKeyPath, options: [.new, .old], context: nil)
         self.reload()
     }
     
     deinit {
-        scrollView?.removeObserver(self, forKeyPath: contentOffsetKeyPath)
+        scrollView.removeObserver(self, forKeyPath: contentOffsetKeyPath)
     }
     
     // MARK: - Public
@@ -104,8 +104,7 @@ class ScrollBar: NSObject {
     // MARK: - Update UI
     
     private func updateScrollBarView(withYOffset offset: CGFloat, speedInPoints speed: CGFloat) {
-        guard let scrollBarView = scrollBarView,
-            let scrollView = scrollView else { return }
+        guard let scrollBarView = scrollBarView else { return }
         guard isScrollBarActive ||
             (speed >= attributes.minStartSpeedInPoints) else { return }
         isScrollBarActive = true
@@ -123,7 +122,6 @@ class ScrollBar: NSObject {
     }
     
     private func updateHintView(forScrollBarView scrollBarView: UIView) {
-        guard let scrollView = scrollView else { return }
         hintView?.alpha = (showsHintView && isFastScrollInProgress) ? 1.0 : 0.0
         guard showsHintView else { return }
         if hintView == nil {
@@ -146,7 +144,6 @@ class ScrollBar: NSObject {
     
     private func setupScrollBarView() {
         removeOldScrollBar()
-        guard let scrollView = scrollView else { return }
         let scrollBarView = dataSource?.view?(for: self) ?? createDefaultScrollBarView()
         scrollView.addSubview(scrollBarView)
         scrollBarView.alpha = 0.0
@@ -158,8 +155,7 @@ class ScrollBar: NSObject {
     }
     
     private func setupHintView() {
-        guard let scrollView = scrollView,
-            hintView == nil else { return }
+        guard hintView == nil else { return }
         let _hintView = createDefaultScrollBarHintView()
         scrollView.addSubview(_hintView)
         _hintView.alpha = 0.0
@@ -186,7 +182,6 @@ class ScrollBar: NSObject {
     // MARK: - Actions
     
     dynamic private func panGestureAction(gesture: UIPanGestureRecognizer) {
-        guard let scrollView = scrollView else { return }
         guard let scrollBarView = scrollBarView else { return }
         switch gesture.state {
         case .began:
