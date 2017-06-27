@@ -106,6 +106,7 @@ class ScrollBar: NSObject {
     // MARK: - Update UI
     
     private func updateScrollBarView(withYOffset offset: CGFloat, speedInPoints speed: CGFloat) {
+        guard scrollView.contentSize.height > scrollView.bounds.height else { return }
         bringSubviewsToFrontIfNeeded()
         guard let scrollBarView = scrollBarView else { return }
         guard isScrollBarActive ||
