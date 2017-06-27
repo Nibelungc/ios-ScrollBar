@@ -217,6 +217,7 @@ class ScrollBar: NSObject {
         fadeOutWorkItem = DispatchWorkItem {
             [weak self] in
             guard let sSelf = self else { return }
+            guard !sSelf.isFastScrollInProgress else { return }
             UIView.animate(withDuration: sSelf.attributes.fadeOutAnimationDuration) {
                 views.forEach { $0?.alpha = 0.0 }
                 sSelf.isScrollBarActive = false
