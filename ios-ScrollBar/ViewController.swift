@@ -38,8 +38,8 @@ class ViewController: UIViewController, UITableViewDataSource, ScrollBarDataSour
     
     // MARK - ScrollBarDataSource
     
-    func textForHintView(_ hintView: UIView, at point: CGPoint, for scrollBar: ScrollBar) -> String {
-        guard let indexPath = tableView.indexPathForRow(at: point) else { return "" }
+    func textForHintView(_ hintView: UIView, at point: CGPoint, for scrollBar: ScrollBar) -> String? {
+        guard let indexPath = tableView.indexPathForRow(at: point) else { return nil }
         let title = items[indexPath.section][indexPath.row]
         return title
     }

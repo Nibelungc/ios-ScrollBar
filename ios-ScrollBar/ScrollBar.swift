@@ -14,7 +14,7 @@ import UIKit
     @objc optional func rightOffset(for scrollBarView: UIView, for scrollBar: ScrollBar) -> CGFloat
     
     @objc optional func hintViewCenterXCoordinate(for scrollBar: ScrollBar) -> CGFloat
-    @objc optional func textForHintView(_ hintView: UIView, at point: CGPoint, for scrollBar: ScrollBar) -> String
+    @objc optional func textForHintView(_ hintView: UIView, at point: CGPoint, for scrollBar: ScrollBar) -> String?
 }
 
 struct HintViewAttributes {
@@ -81,7 +81,7 @@ class ScrollBar: NSObject {
     private var fadeOutWorkItem: DispatchWorkItem?
     private var lastPanTranslation: CGFloat = 0.0
     private var isScrollBarActive = false
-
+    
     // MARK: - Lifecycle
     
     init(scrollView: UIScrollView) {
@@ -135,12 +135,17 @@ class ScrollBar: NSObject {
         let x = dataSource?.hintViewCenterXCoordinate?(for: self) ?? defaultXCoordinate
         let y = scrollBarView.center.y
         let point = CGPoint(x: x, y: y)
-        _hintView.text = dataSource?.textForHintView?(_hintView, at: point, for: self)
-        var size = _hintView.sizeThatFits(hintViewAttributes.size)
-        size.width = max(hintViewAttributes.size.width, size.width)
-        size.height = max(hintViewAttributes.size.height, size.height)
-        _hintView.frame.size = size
-        _hintView.center = point
+        
+        if let text = dataSource?.textForHintView?(_hintView, at: point, for: self) {
+            _hintView.text = text
+            var size = _hintView.sizeThatFits(hintViewAttributes.size)
+            size.width = max(hintViewAttributes.size.width, size.width)
+            size.height = max(hintViewAttributes.size.height, size.height)
+            _hintView.frame.size = size
+            _hintView.center = point
+        } else {
+            hintView?.alpha = 0.0
+        }
     }
     
     // MARK: - Setup UI
