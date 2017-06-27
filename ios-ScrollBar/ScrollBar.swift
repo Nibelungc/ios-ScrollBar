@@ -153,6 +153,7 @@ class ScrollBar: NSObject {
     private func setupScrollBarView() {
         removeOldScrollBar()
         let scrollBarView = dataSource?.view?(for: self) ?? createDefaultScrollBarView()
+        scrollBarView.isUserInteractionEnabled = true
         scrollView.addSubview(scrollBarView)
         scrollBarView.alpha = 0.0
         self.scrollBarView = scrollBarView
