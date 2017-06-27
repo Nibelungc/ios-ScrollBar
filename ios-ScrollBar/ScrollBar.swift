@@ -192,11 +192,12 @@ class ScrollBar: NSObject {
             isFastScrollInProgress = true
         case .changed:
             let insets = scrollView.contentInset.top + scrollView.contentInset.bottom
-            let scrollableHeight = scrollView.bounds.height - scrollBarView.bounds.height - insets
             let deltaY = gesture.translation(in: scrollView).y - lastPanTranslation
             lastPanTranslation = gesture.translation(in: scrollView).y
+            let scrollableHeight = scrollView.bounds.height - scrollBarView.bounds.height - insets
+            let contentHeight = scrollView.contentSize.height - scrollView.bounds.height + insets
             let maxYOffset = scrollView.contentSize.height - scrollView.bounds.height
-            let deltaContentY = deltaY * (maxYOffset / scrollableHeight)
+            let deltaContentY = deltaY * (contentHeight / scrollableHeight)
             var y = scrollView.contentOffset.y + deltaContentY
             y = max(-insets, (min(maxYOffset, y)))
             let newOffset = CGPoint(x: scrollView.contentOffset.x, y: y)
