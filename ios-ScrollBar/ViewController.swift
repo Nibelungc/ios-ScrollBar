@@ -18,12 +18,7 @@ class ViewController: UIViewController, UITableViewDataSource, ScrollBarDataSour
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        items = [
-            (0...1000).map { "Cell \($0)" },
-            (0...1000).map { "Cell \($0)" },
-            (0...1000).map { "Cell \($0)" }
-        ]
-        
+        reload()
         tableView = UITableView(frame: view.bounds, style: .plain)
         tableView.autoresizingMask = [.flexibleHeight, .flexibleWidth]
         view.addSubview(tableView)
@@ -34,7 +29,30 @@ class ViewController: UIViewController, UITableViewDataSource, ScrollBarDataSour
         
         scrollBar = ScrollBar(scrollView: tableView)
         scrollBar.dataSource = self
+        
+        navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(reloadAction))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .trash, target: self, action: #selector(shortListAction))
     }
+    
+    func reloadAction() {
+        reload()
+    }
+    
+    func shortListAction() {
+        reload(max: 5)
+    }
+    
+    func reload(min: Int = 0, max: Int = 10_000) {
+        let maxCount = min + Int(arc4random_uniform(UInt32(max - min + 1)))
+        items = [
+            (0...maxCount).map { "Cell \($0)" },
+            (0...maxCount).map { "Cell \($0)" },
+            (0...maxCount).map { "Cell \($0)" }
+        ]
+        navigationItem.title = "\(maxCount) Cells"
+        tableView?.reloadData()
+    }
+    
     
     // MARK - ScrollBarDataSource
     
