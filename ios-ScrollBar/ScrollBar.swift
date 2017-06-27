@@ -63,6 +63,7 @@ class ScrollBar: NSObject {
         didSet { reload() }
     }
     private(set) var isFastScrollInProgress = false
+    var isHidden: Bool = false
     var showsHintView = true
     var hintViewAttributes = HintViewAttributes() {
         didSet { updateHintViewAttributes() }
@@ -106,9 +107,10 @@ class ScrollBar: NSObject {
     // MARK: - Update UI
     
     private func updateScrollBarView(withYOffset offset: CGFloat, speedInPoints speed: CGFloat) {
-        guard scrollView.contentSize.height > scrollView.bounds.height else { return }
-        bringSubviewsToFrontIfNeeded()
         guard let scrollBarView = scrollBarView else { return }
+        
+        guard scrollView.contentSize.height > scrollView.bounds.height, !isHidden else { return }
+        bringSubviewsToFrontIfNeeded()
         guard isScrollBarActive ||
             (speed >= attributes.minStartSpeedInPoints) else { return }
         isScrollBarActive = true
