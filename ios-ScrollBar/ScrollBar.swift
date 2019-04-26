@@ -18,22 +18,25 @@ import UIKit
 }
 
 struct HintViewAttributes {
-    var size: CGSize
+    var minSize: CGSize
     var cornerRadius: CGFloat
     var backgroundColor: UIColor
     var textColor: UIColor
     var font: UIFont
+    var textPaddings: CGFloat
     
-    init(size: CGSize = CGSize(width: 76, height: 32),
+    init(minSize: CGSize = CGSize(width: 76, height: 32),
          cornerRadius: CGFloat = 5,
          backgroundColor: UIColor = UIColor.black.withAlphaComponent(0.3),
          textColor: UIColor = .black,
-         font: UIFont = .systemFont(ofSize: 15)) {
-        self.size = size
+         font: UIFont = .systemFont(ofSize: 15),
+         textPaddings: CGFloat = 8) {
+        self.minSize = minSize
         self.cornerRadius = cornerRadius
         self.backgroundColor = backgroundColor
         self.textColor = textColor
         self.font = font
+        self.textPaddings = textPaddings
     }
 }
 
@@ -148,9 +151,10 @@ class ScrollBar: NSObject {
         
         if let text = dataSource?.textForHintView?(_hintView, at: point, for: self) {
             _hintView.text = text
-            var size = _hintView.sizeThatFits(hintViewAttributes.size)
-            size.width = max(hintViewAttributes.size.width, size.width)
-            size.height = max(hintViewAttributes.size.height, size.height)
+            var size = _hintView.sizeThatFits(hintViewAttributes.minSize)
+            size.width += hintViewAttributes.textPaddings * 2
+            size.width = max(hintViewAttributes.minSize.width, size.width)
+            size.height = max(hintViewAttributes.minSize.height, size.height)
             _hintView.frame.size = size
             _hintView.center = point
         } else {
@@ -267,7 +271,7 @@ class ScrollBar: NSObject {
         guard let hintView = hintView else { return }
         hintView.backgroundColor = hintViewAttributes.backgroundColor
         hintView.layer.cornerRadius = hintViewAttributes.cornerRadius
-        hintView.frame.size = hintViewAttributes.size
+        hintView.frame.size = hintViewAttributes.minSize
         hintView.textColor = hintViewAttributes.textColor
         hintView.font = hintViewAttributes.font
     }
