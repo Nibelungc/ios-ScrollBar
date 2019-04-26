@@ -78,7 +78,7 @@ class ScrollBar: NSObject {
         didSet { updateHintViewAttributes() }
     }
     private var panGestureRecognizer: UIPanGestureRecognizer?
-    private let contentOffsetKeyPath = #keyPath(UIScrollView.contentOffset)
+    private var contentOffsetObserver: NSKeyValueObservation?
     private var fadeOutWorkItem: DispatchWorkItem?
     private var lastPanTranslation: CGFloat = 0.0
     private var isScrollBarActive = false
@@ -95,12 +95,12 @@ class ScrollBar: NSObject {
     init(scrollView: UIScrollView) {
         self.scrollView = scrollView
         super.init()
-        scrollView.addObserver(self, forKeyPath: contentOffsetKeyPath, options: [.new, .old], context: nil)
-        self.reload()
+        setupObservation()
+        reload()
     }
     
     deinit {
-        scrollView.removeObserver(self, forKeyPath: contentOffsetKeyPath)
+        contentOffsetObserver = nil
         scrollBarView?.removeFromSuperview()
         hintView?.removeFromSuperview()
     }
@@ -200,7 +200,7 @@ class ScrollBar: NSObject {
     
     // MARK: - Actions
     
-    dynamic private func panGestureAction(gesture: UIPanGestureRecognizer) {
+    @objc private func panGestureAction(gesture: UIPanGestureRecognizer) {
         guard let scrollBarView = scrollBarView else { return }
         switch gesture.state {
         case .began:
@@ -227,11 +227,23 @@ class ScrollBar: NSObject {
     
     // MARK: - Private
     
+    private func setupObservation() {
+        contentOffsetObserver = scrollView.observe(\.contentOffset, options: [.new, .old]) {
+            [unowned self] _, change in
+            
+            guard let newOffset = change.newValue,
+                let oldOffset = change.oldValue else { return }
+            let speedInPoints = abs(oldOffset.y - newOffset.y)
+            self.updateScrollBarView(withYOffset: newOffset.y, speedInPoints: speedInPoints)
+        }
+    }
+    
     private func scheduleFadeOutAnimation() {
         let views = [scrollBarView, hintView]
         fadeOutWorkItem?.cancel()
         fadeOutWorkItem = DispatchWorkItem {
             [weak self] in
+            
             guard let sSelf = self else { return }
             guard !sSelf.isFastScrollInProgress else { return }
             UIView.animate(withDuration: sSelf.attributes.fadeOutAnimationDuration) {
@@ -261,18 +273,7 @@ class ScrollBar: NSObject {
     }
     
     private func bringSubviewsToFrontIfNeeded() {
-        let views = [hintView, scrollBarView].flatMap { $0 }
+        let views = [hintView, scrollBarView].compactMap { $0 }
         views.forEach { scrollView.bringSubview(toFront: $0) }
-    }
-    
-    // MARK: - Observing
-    
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        guard keyPath == contentOffsetKeyPath,
-            let change = change else { return }
-        let newOffset = change[.newKey] as! CGPoint
-        let oldOffset = change[.oldKey] as! CGPoint
-        let speedInPoints = abs(oldOffset.y - newOffset.y)
-        updateScrollBarView(withYOffset: newOffset.y, speedInPoints: speedInPoints)
     }
 }
