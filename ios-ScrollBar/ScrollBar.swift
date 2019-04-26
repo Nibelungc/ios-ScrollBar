@@ -82,6 +82,13 @@ class ScrollBar: NSObject {
     private var fadeOutWorkItem: DispatchWorkItem?
     private var lastPanTranslation: CGFloat = 0.0
     private var isScrollBarActive = false
+    private var topBottomInsets: CGFloat {
+        var insets = scrollView.contentInset.top + scrollView.contentInset.bottom
+        if #available(iOS 11.0, *) {
+            insets += scrollView.adjustedContentInset.top + scrollView.adjustedContentInset.bottom
+        }
+        return insets
+    }
     
     // MARK: - Lifecycle
     
@@ -117,7 +124,7 @@ class ScrollBar: NSObject {
         scrollBarView.alpha = 1.0
         let rightOffset = dataSource?.rightOffset?(for: scrollBarView, for: self) ?? attributes.rightOffset
         let x = scrollView.bounds.maxX - scrollBarView.bounds.width - rightOffset
-        let insets = scrollView.contentInset.top + scrollView.contentInset.bottom
+        let insets = topBottomInsets
         let scrollableHeight = scrollView.bounds.height - scrollBarView.bounds.height - insets
         let offsetWithInsets = offset + insets
         let progress = offsetWithInsets / (scrollView.contentSize.height - scrollView.bounds.height + insets)
@@ -200,7 +207,7 @@ class ScrollBar: NSObject {
             lastPanTranslation = 0.0
             isFastScrollInProgress = true
         case .changed:
-            let insets = scrollView.contentInset.top + scrollView.contentInset.bottom
+            let insets = topBottomInsets
             let deltaY = gesture.translation(in: scrollView).y - lastPanTranslation
             lastPanTranslation = gesture.translation(in: scrollView).y
             let scrollableHeight = scrollView.bounds.height - scrollBarView.bounds.height - insets
