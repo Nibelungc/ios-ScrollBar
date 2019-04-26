@@ -10,21 +10,17 @@ import UIKit
 
 class ViewController: UIViewController, UITableViewDataSource, ScrollBarDataSource, UITableViewDelegate {
     
-    var tableView: UITableView!
-    var scrollBar: ScrollBar!
-    var items = [[String]]()
-    let identifier = "Cell"
+    @IBOutlet private weak var tableView: UITableView!
+    
+    private var scrollBar: ScrollBar!
+    private var items = [[String]]()
+    private let identifier = "Cell"
 
     override func viewDidLoad() {
         super.viewDidLoad()
         
         reload()
-        tableView = UITableView(frame: view.bounds, style: .plain)
-        tableView.autoresizingMask = [.flexibleHeight, .flexibleWidth]
-        view.addSubview(tableView)
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: identifier)
-        tableView.dataSource = self
-        tableView.delegate = self
         tableView.sectionHeaderHeight = 20
         
         scrollBar = ScrollBar(scrollView: tableView)
